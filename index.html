@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>अनीफ फायनान्शियल सर्व्हिसेस - लोन कॅल्क्युलेटर</title>
+    <!-- Chart.js and PDF Generation Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+        
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #00AEEF;
+            --background-color: #f4f7fc;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --header-color: #fff;
+            --border-color: #e0e0e0;
+            --success-color: #2E7D32;
+        }
+
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: var(--header-color);
+            padding: 20px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 90, 156, 0.2);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+        }
+        
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+        }
+        
+        .card h3 {
+             margin-top: 0;
+             color: var(--primary-color);
+             font-size: 1.2em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        input[type="text"], input[type="number"], input[type="date"] {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.2);
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        .btn-print {
+            background-color: var(--success-color);
+        }
+        .btn-print:hover {
+            background-color: #388E3C;
+        }
+        
+        .btn-pdf {
+            background-color: #D32F2F;
+        }
+        .btn-pdf:hover {
+            background-color: #E53935;
+        }
+        
+        #report-output {
+            display: none;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .summary-grid, .charges-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            text-align: center;
+        }
+        
+        .summary-item, .charge-item {
+            background-color: var(--background-color);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .summary-item { border-left: 5px solid var(--secondary-color); }
+        .charge-item { border-left: 5px solid #E53935; }
+
+
+        .summary-item h4, .charge-item h4 {
+            margin: 0 0 8px 0;
+            font-size: 1em;
+            color: var(--primary-color);
+        }
+
+        .summary-item p, .charge-item p {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+        
+        .summary-item.disbursed p {
+             color: var(--success-color);
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 25px;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--background-color);
+        }
+        
+        .last-emi td {
+            font-weight: bold;
+            background-color: #fffde7;
+        }
+        
+        .insurance-note {
+            background-color: #e3f2fd;
+            border-left: 5px solid #2196F3;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .insurance-note h4 {
+            margin-top: 0;
+        }
+        
+        .emi-note {
+            font-size: 0.9em;
+            text-align: center;
+            color: #555;
+            margin-top: -15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* PRINT STYLES */
+        @media print {
+            body {
+                background-color: #fff;
+                padding: 0;
+                margin: 0;
+            }
+            .header, #input-card, #button-group, .btn {
+                display: none !important;
+            }
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                padding: 15px;
+                margin-bottom: 15px;
+                page-break-inside: avoid;
+            }
+            #report-output {
+                display: block !important;
+            }
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            canvas {
+                max-width: 100% !important;
+            }
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>अनीफ फायनान्शियल सर्व्हिसेस</h1>
+            <p>फिल्ड टीम लोन कॅल्क्युलेटर आणि रिपोर्ट جنरेटर</p>
+        </div>
+
+        <div class="card" id="input-card">
+            <h2>कर्जाचा तपशील भरा</h2>
+            <form id="loan-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="customerName">ग्राहकाचे पूर्ण नाव</label>
+                        <input type="text" id="customerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loanAmount">कर्जाची रक्कम (रु.)</label>
+                        <input type="number" id="loanAmount" required placeholder="उदा. 60000">
+                    </div>
+                    <div class="form-group">
+                        <label for="loanStartDate">कर्ज कधी हवे?</label>
+                        <input type="date" id="loanStartDate" required>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="generateReport()">रिपोर्ट तयार करा</button>
+            </form>
+        </div>
+
+        <!-- This is the section that will be converted to PDF -->
+        <div id="report-output">
+            <div id="report-content">
+                 <div class="card">
+                    <h2 id="report-header"></h2>
+                 </div>
+                
+                <div class="card">
+                    <h3>कर्जाचा सारांश (Loan Summary)</h3>
+                    <div class="emi-note">
+                        <p>मासिक हप्ता (EMI) जवळच्या पुढील १० रुपयांमध्ये राउंड ऑफ केला आहे. शेवटचा हप्ता समायोजित असेल.</p>
+                    </div>
+                    <div class="summary-grid">
+                        <div class="summary-item disbursed">
+                            <h4>ग्राहकाला मिळणारी रक्कम</h4>
+                            <p id="summary-disbursed"></p>
+                        </div>
+                        <div class="summary-item">
+                            <h4>मासिक हप्ता (EMI)</h4>
+                            <p id="summary-emi"></p>
+                        </div>
+                        <div class="summary-item">
+                            <h4>एकूण व्याज</h4>
+                            <p id="summary-total-interest"></p>
+                        </div>
+                        <div class="summary-item">
+                            <h4>कर्ज समाप्ती तारीख</h4>
+                            <p id="summary-end-date"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>कर्ज प्रक्रिया शुल्क आणि इतर चार्जेस (Upfront Charges)</h3>
+                    <p style="text-align:center; margin-top:-10px; margin-bottom: 20px;">(ही रक्कम ग्राहकाने कर्जाव्यतिरिक्त वेगळी भरायची आहे)</p>
+                    <div class="charges-grid">
+                        <div class="charge-item">
+                            <h4>LPF (2%)</h4>
+                            <p id="charge-lpf"></p>
+                        </div>
+                        <div class="charge-item">
+                            <h4>GST (18% on LPF)</h4>
+                            <p id="charge-gst"></p>
+                        </div>
+                        <div class="charge-item">
+                            <h4>विमा (2%)</h4>
+                            <p id="charge-insurance"></p>
+                        </div>
+                        <div class="charge-item">
+                            <h4>एकूण वरती भरायची रक्कम</h4>
+                            <p id="charge-upfront-total"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>कर्जाचे विश्लेषण (Loan Analysis)</h3>
+                    <div class="charts-container">
+                        <div>
+                            <canvas id="loanBreakdownChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="repaymentProgressChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card insurance-note">
+                    <h4>विमा (Insurance) का महत्त्वाचा आहे?</h4>
+                    <p>कर्जाच्या मुदतीदरम्यान कर्जदाराला काही झाल्यास (उदा. अपघात, निधन), त्याच्या कुटुंबावर कर्जाचा बोजा येऊ नये यासाठी विमा संरक्षण अत्यंत महत्त्वाचे आहे. विमा असल्यामुळे उर्वरित कर्जाची परतफेड विमा कंपनी करते, ज्यामुळे तुमचे कुटुंब आर्थिकदृष्ट्या सुरक्षित राहते.</p>
+                </div>
+
+                <div class="card">
+                    <h3>मासिक परतफेड वेळापत्रक (Repayment Schedule)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>महिना</th>
+                                <th>हप्ता (EMI)</th>
+                                <th>मुद्दल (Principal)</th>
+                                <th>व्याज (Interest)</th>
+                                <th>शिल्लक रक्कम (Balance)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="amortization-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="button-group" id="button-group">
+                <button onclick="printReport()" class="btn btn-print">प्रिंट करा / PDF मध्ये सेव्ह करा</button>
+                <button id="downloadPdfBtn" class="btn btn-pdf">PDF मध्ये डाउनलोड करा (Image)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let breakdownChart = null;
+        let progressChart = null;
+
+        function formatCurrency(num) {
+            return '₹ ' + num.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function printReport() {
+            window.print();
+        }
+
+        function generateReport() {
+            const customerName = document.getElementById('customerName').value;
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const loanStartDateStr = document.getElementById('loanStartDate').value;
+
+            if (!customerName || isNaN(loanAmount) || !loanStartDateStr) {
+                alert('कृपया सर्व माहिती अचूक भरा.');
+                return;
+            }
+
+            const annualRate = 0.24;
+            const tenureMonths = 24;
+            const lpfRate = 0.02;
+            const gstRate = 0.18;
+            const insuranceRate = 0.02;
+            const monthlyRate = annualRate / 12;
+
+            // --- EMI Calculation with Rounding ---
+            const calculatedEmi = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / (Math.pow(1 + monthlyRate, tenureMonths) - 1);
+            const roundedEmi = Math.ceil(calculatedEmi / 10) * 10;
+
+            const lpfAmount = loanAmount * lpfRate;
+            const gstAmount = lpfAmount * gstRate;
+            const insuranceAmount = loanAmount * insuranceRate;
+            const totalUpfrontCharges = lpfAmount + gstAmount + insuranceAmount;
+            const disbursedAmount = loanAmount;
+
+            const loanStartDate = new Date(loanStartDateStr);
+            const loanEndDate = new Date(loanStartDate);
+            loanEndDate.setMonth(loanEndDate.getMonth() + tenureMonths);
+
+            // --- Generate Amortization and Adjust Final EMI ---
+            const tableBody = document.getElementById('amortization-table');
+            tableBody.innerHTML = ''; 
+            let balance = loanAmount;
+            const balanceData = [];
+            let totalInterestPaid = 0;
+            let totalPrincipalPaid = 0;
+
+            for (let i = 1; i <= tenureMonths; i++) {
+                const interestPayment = balance * monthlyRate;
+                let principalPayment;
+                let currentEmi;
+
+                if (i < tenureMonths) {
+                    currentEmi = roundedEmi;
+                    principalPayment = currentEmi - interestPayment;
+                } else { // Last month adjustment
+                    principalPayment = balance;
+                    currentEmi = principalPayment + interestPayment;
+                }
+                
+                balance -= principalPayment;
+                totalInterestPaid += interestPayment;
+                totalPrincipalPaid += principalPayment;
+
+                balanceData.push(balance > 0 ? balance : 0);
+
+                const rowClass = (i === tenureMonths) ? 'class="last-emi"' : '';
+                const row = `<tr ${rowClass}>
+                    <td>${i}</td>
+                    <td>${formatCurrency(currentEmi)}</td>
+                    <td>${formatCurrency(principalPayment)}</td>
+                    <td>${formatCurrency(interestPayment)}</td>
+                    <td>${formatCurrency(balance < 0.01 ? 0 : balance)}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            }
+
+            // --- Update UI ---
+            document.getElementById('report-header').innerText = `कर्ज अहवाल: ${customerName}`;
+            document.getElementById('summary-disbursed').innerText = formatCurrency(disbursedAmount);
+            document.getElementById('summary-emi').innerText = formatCurrency(roundedEmi);
+            document.getElementById('summary-total-interest').innerText = formatCurrency(totalInterestPaid);
+            document.getElementById('summary-end-date').innerText = loanEndDate.toLocaleDateString('mr-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+            
+            document.getElementById('charge-lpf').innerText = formatCurrency(lpfAmount);
+            document.getElementById('charge-gst').innerText = formatCurrency(gstAmount);
+            document.getElementById('charge-insurance').innerText = formatCurrency(insuranceAmount);
+            document.getElementById('charge-upfront-total').innerText = formatCurrency(totalUpfrontCharges);
+            
+            createCharts(loanAmount, totalInterestPaid, balanceData, tenureMonths);
+            document.getElementById('report-output').style.display = 'block';
+        }
+
+        function createCharts(principal, interest, balanceData, tenure) {
+            if (breakdownChart) breakdownChart.destroy();
+            if (progressChart) progressChart.destroy();
+
+            const breakdownCtx = document.getElementById('loanBreakdownChart').getContext('2d');
+            breakdownChart = new Chart(breakdownCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['एकूण मुद्दल (Principal)', 'एकूण व्याज (Interest)'],
+                    datasets: [{
+                        data: [principal, interest],
+                        backgroundColor: ['#005A9C', '#00AEEF'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { title: { display: true, text: 'कर्ज परतफेड विभाजन', font: { size: 16 } } }
+                }
+            });
+
+            const progressCtx = document.getElementById('repaymentProgressChart').getContext('2d');
+            const monthLabels = Array.from({ length: tenure }, (_, i) => `महिना ${i + 1}`);
+            
+            progressChart = new Chart(progressCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthLabels,
+                    datasets: [{
+                        label: 'शिल्लक रक्कम (Remaining Balance)',
+                        data: balanceData,
+                        backgroundColor: 'rgba(0, 174, 239, 0.6)',
+                        borderColor: '#00AEEF',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { callback: value => '₹' + (value / 1000) + 'k' } } },
+                    plugins: {
+                        title: { display: true, text: 'परतफेड प्रगती (Loan End Progress)', font: { size: 16 } },
+                        tooltip: { callbacks: { label: context => context.dataset.label + ': ' + formatCurrency(context.raw) } }
+                    }
+                }
+            });
+        }
+        
+        document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const reportContent = document.getElementById('report-content');
+            const customerName = document.getElementById('customerName').value || 'Customer';
+            const buttonGroup = document.getElementById('button-group');
+            
+            buttonGroup.style.display = 'none';
+
+            html2canvas(reportContent, { scale: 2, useCORS: true }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`Anif_Loan_Report_Image_${customerName.replace(/ /g,"_")}.pdf`);
+                
+                buttonGroup.style.display = 'grid';
+            }).catch(err => {
+                console.error("PDF generation failed:", err);
+                alert("PDF तयार करताना त्रुटी आली. कृपया पुन्हा प्रयत्न करा.");
+                buttonGroup.style.display = 'grid';
+            });
+        });
+    </script>
+</body>
+</html>
